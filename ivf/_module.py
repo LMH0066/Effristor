@@ -15,10 +15,10 @@ from ivf._utils import LOSS_KEYS
 
 
 class PositionEncoding(nn.Module):
-    def __init__(self, max_len, d_model, device): 
-        super(PositionEncoding,self).__init__()
+    def __init__(self, max_len, d_model, device):
+        super(PositionEncoding, self).__init__()
 
-        self.PE = torch.zeros(max_len, d_model, device = device)
+        self.PE = torch.zeros(max_len, d_model, device=device)
         self.PE.requires_grad = False
 
         pos = torch.arange(0, max_len, device=device).float().unsqueeze(1)
@@ -26,9 +26,9 @@ class PositionEncoding(nn.Module):
 
         self.PE[:, 0::2] = torch.sin(pos / (10000**(_2i / d_model)))
         self.PE[:, 1::2] = torch.cos(pos / (10000**(_2i / d_model)))
-        
-    def forward(self,x):
-    	# [batch_size, seq_len]
+
+    def forward(self, x):
+        # [batch_size, seq_len]
         seq_len = x.size(1)
         return self.PE[:seq_len, :]
 
@@ -55,7 +55,8 @@ class FocalLoss(nn.Module):
 
     def forward(self, outputs, targets):
         pt = torch.sigmoid(outputs)
-        loss = - self.alpha * (1 - pt) ** self.gamma * targets * torch.log(pt) - (1 - self.alpha) * pt ** self.gamma * (1 - outputs) * torch.log(1 - pt)
+        loss = - self.alpha * (1 - pt) ** self.gamma * targets * torch.log(pt) - (
+            1 - self.alpha) * pt ** self.gamma * (1 - outputs) * torch.log(1 - pt)
 
         if self.reduction == "mean":
             loss = loss.mean()
@@ -84,8 +85,8 @@ class NET(BaseModuleClass):
         norm_first: bool = False,
         bias: bool = True,
         seed: int = 42,
-        device = None,
-        dtype = None,
+        device=None,
+        dtype=None,
     ):
         factory_kwargs = {"device": device, "dtype": dtype}
         super().__init__()
@@ -116,7 +117,13 @@ class NET(BaseModuleClass):
         self.encoder = nn.TransformerEncoder(
             encoder_layer, num_encoder_layers, encoder_norm
         )
-        self.decoder = Linear(d_model, output_dim, bias)
+        self.decoder = nn.Sequential(
+            nn.Linear(d_model, d_model // 2, bias=bias),
+            nn.ReLU(),
+            nn.Linear(d_model // 2, d_model // 4, bias=bias),
+            nn.ReLU(),
+            nn.Linear(d_model // 4, output_dim, bias=bias),
+        )
 
         self._init_weights()
 
@@ -132,7 +139,8 @@ class NET(BaseModuleClass):
         if len(_main.shape) == 1:
             _main = _main.unsqueeze(0)
         attn_logits = self.encoder(
-            self.embedding(torch.nan_to_num(_main, nan=-255.0).unsqueeze(-1)).permute(1, 0, 2),
+            self.embedding(torch.nan_to_num(
+                _main, nan=-255.0).unsqueeze(-1)).permute(1, 0, 2),
             src_key_padding_mask=torch.isnan(_main)
         )
         attn_logits = attn_logits.mean(dim=0)
@@ -148,7 +156,8 @@ class NET(BaseModuleClass):
         losses = dict()
         target = tensors[self.target_loc].squeeze()
 
-        losses[LOSS_KEYS.FocalLoss] = FocalLoss()(inference_output.squeeze(), target)
+        losses[LOSS_KEYS.FocalLoss] = FocalLoss()(
+            inference_output.squeeze(), target)
 
         return losses
 
@@ -191,7 +200,7 @@ class NET(BaseModuleClass):
     def load_state_dict(self, state_dict):
         def _remove_prefix(text, prefix):
             if text.startswith(prefix):
-                return text[len(prefix) :]
+                return text[len(prefix):]
             return text
 
         pairings = [
