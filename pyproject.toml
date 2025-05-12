@@ -15,6 +15,7 @@ scvi-tools = "^1.2.2.post2"
 openpyxl = "^3.1.5"
 neptune = "^1.13.0"
 imblearn = "^0.0"
+matplotlib = "^3.10.3"
 
 
 [tool.poetry.group.dev.dependencies]
