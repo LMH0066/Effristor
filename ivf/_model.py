@@ -12,6 +12,7 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 from anndata import AnnData
+from captum.attr import IntegratedGradients
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.strategies import DDPStrategy
 from scvi import REGISTRY_KEYS, settings
@@ -381,6 +382,27 @@ class IVF(BaseModelClass):
         pred_adata.obs_names = _adata.obs_names
 
         return pred_adata
+
+    @torch.no_grad()
+    def interpret(
+        self,
+        data: Sequence[float],
+        internal_batch_size: int = 8,
+    ):
+        self.module.eval()
+        ig = IntegratedGradients(self.module.inference)
+
+        if data.ndim == 1:
+            data = data.reshape(1, -1)
+
+        tensors = {self.main_loc: torch.Tensor(data)}
+        inference_inputs = self.module._get_inference_input(tensors)
+        attributions = ig.attribute(
+            inference_inputs["main"],
+            target=(0),
+            internal_batch_size=internal_batch_size,
+        )
+        return attributions
 
     def save(
         self,

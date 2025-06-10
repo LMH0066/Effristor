@@ -1,6 +1,8 @@
 import anndata
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
+import torch
 from sklearn.metrics import roc_auc_score, roc_curve
 from ivf import IVF
 
@@ -16,6 +18,14 @@ def main(model_path: str, adata_path: str, split_key: str = "split_key"):
 
     # Make predictions
     predictions = model.predict(adata, val_indices, batch_size=64)
+
+    predictions.X = torch.sigmoid(torch.tensor(predictions.X)).numpy()
+    pd.DataFrame(
+        {
+            "predictions": predictions.X.flatten(),
+            "targets": predictions.obsm["target"].flatten()
+        }
+    ).to_csv('predictions.csv', index=False)
 
     # Calculate ROC AUC score
     roc_auc = roc_auc_score(predictions.obsm["target"], predictions.X)
