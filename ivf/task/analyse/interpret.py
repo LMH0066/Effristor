@@ -24,7 +24,6 @@ def main(model_path: str, adata_path: str, split_key: str = "split_key"):
         interpretations.append(model.interpret(adata[i].X))
     interpretations = torch.stack(interpretations).squeeze()
 
-    import pdb; pdb.set_trace()
     pd.DataFrame(interpretations.numpy()).to_csv('interpret_result.csv', index=False)
 
     sns.heatmap(interpretations, cmap='bwr', center=0)
