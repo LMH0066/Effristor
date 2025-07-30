@@ -35,6 +35,6 @@ def main(model_path: str, adata_path: str, split_key: str = "split_key"):
 if __name__ == "__main__":
     import sys
     if len(sys.argv) != 3:
-        print("Usage: python predict_and_evaluate.py <model_path> <adata_path>")
+        print("Usage: python interpret.py <model_path> <adata_path>")
     else:
         main(sys.argv[1], sys.argv[2])

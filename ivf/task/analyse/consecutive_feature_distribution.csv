@@ -1,0 +1,36 @@
+feature,abnormal,normal,stat,P
+Patient age,37.0(24-49),33.0(20-50),1152288.0,2.2736272098435293e-23
+Partner age,37.0(26-69),34.0(22-69),1063238.5,3.545042101495265e-12
+Previous IVF cycles,2.0(1.0-10.0),1.0(1.0-11.0),1189343.5,2.3535714645682416e-44
+Years of infertility,3.0(0.4-19.0),3.0(0.1-19.0),912005.0,0.06074172851174541
+Body Mass Index (BMI),21.4(16.0-34.5),21.5(2.4-52.6),852815.5,0.9339992917528245
+Follicle Stimulating Hormone (FSH),8.18(1.28-51.11),6.61(0.1-45.14),1145787.0,1.2233721449139547e-22
+Luteinizing hormone (LH),4.79(0.5-34.87),5.15(0.07-87.1),783422.5,0.012953718962622195
+Prolactin (PRL),15.9(2.57-95.04),15.11(0.28-156.55),610901.5,0.8669012941080434
+Estradiol (E2),42.0(5.0-504.0),42.0(3.36-4768.0),856944.5,0.9940578154059645
+Testosterone (T),0.69(0.087-2.59),0.83(0.087-10.46),499392.5,8.777932895520661e-05
+Progesterone (P),0.26(0.05-1.94),0.26(0.0-47.26),719295.5,0.42090877402909843
+anti-Müllerian hormone (AMH),1.03(0.01-16.1),3.06(0.01-26.66),323242.0,5.521190311812793e-56
+Gonadotropin (Gn) dosage,1887.5(75.0-8025.0),2050.0(100.0-11650.0),786679.5,0.05357698431308585
+Gn stimulation days,9.0(1.0-24.0),10.0(1.0-30.0),681206.5,2.097061859153136e-08
+E2 at hCG day,933.5(71.01-7680.0),2772.04(19.0-18176.0),324914.5,8.998692798169054e-66
+LH at hCG day,3.8(0.14-27.64),2.07(0.1-59.83),1144842.0,3.2121993486283425e-30
+P at hCG day,0.39(0.05-27.25),0.6(0.05-56.63),518945.5,1.7951890661992454e-23
+Endometrial thickness at hCG day,6.8(2.5-18.0),11.0(2.0-86.0),459259.0,2.9068964227936796e-39
+The number of follicles ≥14mm at hCG day,2.0(0-23),9.0(0-51),302029.0,2.694764378171127e-78
+Number of punctured follicles,3.0(1-32),11.0(1-54),268802.0,1.2029619788868768e-87
+Number of oocyte retrieved,2.0(1-32),9.0(1-54),222263.0,8.018817700707162e-102
+Abstinence days,4.0(1.0-10.0),4.0(0.0-11.0),719069.5,0.3732817445563552
+Semen PH,7.5(7.0-8.0),7.5(6.4-8.0),743586.0,0.9475487615856191
+Volume before semen optimization treatment,2.2(0.4-6.5),2.5(0.3-7.9),762112.5,0.001318013565866701
+PR (Progressive motility) sperm count before semen optimization treatment,37.0(0-68),39.0(0-76),811888.0,0.12690911807329117
+NP (Non-progressive motility) sperm count before semen optimization treatment,12.0(0-18),12.0(0-25),860441.0,0.9112257582452107
+IM (Immotile) sperm count before semen optimization treatment,51.0(19-100),49.0(12-100),903863.0,0.11548027481169715
+Total sperm count before semen optimization treatment (x10^6),143.9(3.6-575.8),169.1(1.4-1191.2),639617.0,0.0023451676207175715
+Volume after semen optimization treatment,0.5(0.2-1.6),0.5(0.2-3.0),823540.5,0.11788206083354162
+PR sperm count after semen optimization treatment,89.0(0-91),90.0(0-93),815245.5,0.12427012279719028
+NP sperm count after semen optimization treatment,5.0(0-12),5.0(0-17),883658.0,0.19851054599000795
+IM sperm count after semen optimization treatment,6.0(4-100),5.0(2-100),895406.5,0.16446481241797206
+Number of oocyte for IVF,1.0(0-16),6.0(0-54),471301.0,3.562313198945404e-39
+Number of oocyte for ICSI,0.0(0-9),0.0(0-39),766434.5,8.778595533108727e-05
+Number of MII oocyte for ICSI,0.0(0-9),0.0(0-39),766437.0,8.782520590131086e-05
