@@ -12,7 +12,7 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 from anndata import AnnData
-from captum.attr import IntegratedGradients
+from captum.attr import IntegratedGradients, Saliency
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.strategies import DDPStrategy
 from scvi import REGISTRY_KEYS, settings
@@ -403,6 +403,57 @@ class IVF(BaseModelClass):
             internal_batch_size=internal_batch_size,
         )
         return attributions
+
+    @torch.no_grad()
+    def suggest(
+        self,
+        data: Sequence[float],
+        learning_rates: dict[int, float],
+        n_steps: int = 100,
+        need_round: bool = True,
+        need_print: bool = False,
+    ):
+        self.module.eval()
+        saliency = Saliency(self.module.inference)
+
+        if data.ndim == 1:
+            data = data.reshape(1, -1)
+        
+        inputs = torch.Tensor(data)
+        init_score = torch.sigmoid(self.module.inference(inputs)).detach().cpu()[0][0]
+        best_step, best_score = 0, init_score
+        for step in range(n_steps):
+            gradient = saliency.attribute(inputs)
+            _inputs = inputs.clone()
+            for feature_idx in learning_rates.keys():
+                inputs[0, feature_idx] += learning_rates[feature_idx] * gradient[0, feature_idx]
+                if need_round and not torch.isnan(inputs[0, feature_idx]).any():
+                    _inputs[0, feature_idx] = inputs[0, feature_idx].round()
+            current_score = torch.sigmoid(self.module.inference(_inputs)).detach().cpu()[0][0]
+            if current_score < best_score:
+                best_score = current_score
+                best_step = step + 1
+            if need_print:
+                print(
+                    "Initial Score: {};\t Best Score: {};\t Step: {};\t Current Score: {}".format(
+                        init_score, best_score, step + 1, current_score
+                    ),
+                    end='\r', flush=True
+                )
+            if step + 1 - best_step >= n_steps * 0.1:
+                # print("Initial Score: {}; Best Score: {}".format(init_score, best_score))
+                break
+        
+        changes = {}
+        for i in learning_rates.keys():
+            if need_round and not torch.isnan(inputs[0, i]).any():
+                changes[i] = [data[0, i], round(inputs[0, i].item())]
+            else:
+                changes[i] = [data[0, i], inputs[0, i].item()]
+        return {
+            "score": [init_score.item(), best_score.item()],
+            "changes": changes
+        }
 
     def save(
         self,
