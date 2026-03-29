@@ -15,17 +15,17 @@ from ivf._utils import LOSS_KEYS
 
 
 class PositionEncoding(nn.Module):
-    def __init__(self, max_len, d_model, device):
+    def __init__(self, max_len, d_model):
         super(PositionEncoding, self).__init__()
 
-        self.PE = torch.zeros(max_len, d_model, device=device)
-        self.PE.requires_grad = False
+        pe = torch.zeros(max_len, d_model)
+        pos = torch.arange(0, max_len).float().unsqueeze(1)
+        _2i = torch.arange(0, d_model, 2).float()
 
-        pos = torch.arange(0, max_len, device=device).float().unsqueeze(1)
-        _2i = torch.arange(0, d_model, 2, device=device).float()
-
-        self.PE[:, 0::2] = torch.sin(pos / (10000**(_2i / d_model)))
-        self.PE[:, 1::2] = torch.cos(pos / (10000**(_2i / d_model)))
+        pe[:, 0::2] = torch.sin(pos / (10000**(_2i / d_model)))
+        pe[:, 1::2] = torch.cos(pos / (10000**(_2i / d_model)))
+        
+        self.register_buffer("PE", pe)
 
     def forward(self, x):
         # [batch_size, seq_len]
@@ -33,39 +33,34 @@ class PositionEncoding(nn.Module):
         return self.PE[:seq_len, :]
 
 
-class TransformerEmbedding(nn.Module):
-    def __init__(self, vocab_size, max_len, d_model, dropout, device):
-        super(TransformerEmbedding, self).__init__()
-        self.tok_emb = nn.Embedding(vocab_size, d_model)
-        self.pos_emb = PositionEncoding(max_len, d_model, device)
-        self.drop_out = nn.Dropout(p=dropout)
-
-    def forward(self, x):
-        tok_emb = self.tok_emb(x)
-        pos_emb = self.pos_emb(x)
-        return self.drop_out(tok_emb + pos_emb)
-
-
 class FocalLoss(nn.Module):
-    def __init__(self, gamma=2, alpha=0.25, reduction="mean"):
+    def __init__(self, gamma=2.0, alpha=0.5, reduction="mean"):
         super().__init__()
         self.gamma = gamma
         self.alpha = alpha
         self.reduction = reduction
 
     def forward(self, outputs, targets):
-        pt = torch.sigmoid(outputs)
-        loss = - self.alpha * (1 - pt) ** self.gamma * targets * torch.log(pt) - (
-            1 - self.alpha) * pt ** self.gamma * (1 - outputs) * torch.log(1 - pt)
+        targets = targets.float()
+
+        bce_loss = F.binary_cross_entropy_with_logits(
+            outputs, targets, reduction="none"
+        )
+
+        prob = torch.sigmoid(outputs)
+        pt = prob * targets + (1 - prob) * (1 - targets)
+        alpha_t = self.alpha * targets + (1 - self.alpha) * (1 - targets)
+
+        loss = alpha_t * (1 - pt) ** self.gamma * bce_loss
 
         if self.reduction == "mean":
-            loss = loss.mean()
+            return loss.mean()
         elif self.reduction == "sum":
-            loss = loss.sum()
-        elif self.reduction == "max":
-            loss = loss.max()
-
-        return loss
+            return loss.sum()
+        elif self.reduction == "none":
+            return loss
+        else:
+            raise ValueError(f"Unsupported reduction: {self.reduction}")
 
 
 class NET(BaseModuleClass):
@@ -99,6 +94,7 @@ class NET(BaseModuleClass):
         self.num_labels = output_dim
 
         self.embedding = nn.Linear(1, d_model)
+        self.pos_embedding = PositionEncoding(100, d_model)
         encoder_layer = nn.TransformerEncoderLayer(
             d_model,
             nhead,
@@ -138,11 +134,9 @@ class NET(BaseModuleClass):
         _main = main.squeeze()
         if len(_main.shape) == 1:
             _main = _main.unsqueeze(0)
-        attn_logits = self.encoder(
-            self.embedding(torch.nan_to_num(
-                _main, nan=-255.0).unsqueeze(-1)).permute(1, 0, 2),
-            src_key_padding_mask=torch.isnan(_main)
-        )
+        _x = torch.nan_to_num(_main, nan=-255.0)
+        _x = self.embedding(_x.unsqueeze(-1)).permute(1, 0, 2) + self.pos_embedding(_x).unsqueeze(1)
+        attn_logits = self.encoder(_x, src_key_padding_mask=torch.isnan(_main))
         attn_logits = attn_logits.mean(dim=0)
         out = self.decoder(attn_logits)
         return out

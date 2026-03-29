@@ -77,7 +77,7 @@ class MyMetric(Metric):
         preds = dim_zero_cat(self.preds)
         preds = torch.sigmoid(preds)
         target = dim_zero_cat(self.target)
-        print(preds.unique(return_counts=True))
+        # print(preds.unique(return_counts=True))
         # compute auroc
         return 1 - roc_auc_score(target[:, 0], preds[:, 0])
         # compute auprc
@@ -149,25 +149,25 @@ def train(dataset_path, split_key):
     model = ivf.IVF(
         dataset,
         module_params={
-            "d_model": 512,
-            "num_encoder_layers": 6,
+            "d_model": 256,
+            "num_encoder_layers": 3,
             "nhead": 8,
             "dim_feedforward": 1024,
-            "dropout": 0.01,
+            "dropout": 0.02,
         },
         split_key=split_key,
     )
 
     model.train(
-        max_epochs=500,
+        max_epochs=200,
         save_ckpt_every_n_epoch=1,
         plan_kwargs={
             "metric": MyMetric(),
             "lr": 5e-5,
             "weight_decay": 0.7,
             "step_scheduler": True,
-            "step_size_lr": 200,
-            "gamma_lr": 0.5,
+            "step_size_lr": 20,
+            "gamma_lr": 0.9,
         },
         batch_size=32,
         save_top_k=10,
