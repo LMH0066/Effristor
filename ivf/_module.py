@@ -113,11 +113,20 @@ class NET(BaseModuleClass):
         self.encoder = nn.TransformerEncoder(
             encoder_layer, num_encoder_layers, encoder_norm
         )
+        self.pool = nn.Linear(d_model, 1)
         self.decoder = nn.Sequential(
             nn.Linear(d_model, d_model // 2, bias=bias),
-            nn.ReLU(),
+            LayerNorm(
+                d_model // 2, eps=layer_norm_eps, bias=bias, **factory_kwargs
+            ),
+            nn.GELU(),
+            Dropout(dropout),
             nn.Linear(d_model // 2, d_model // 4, bias=bias),
-            nn.ReLU(),
+            LayerNorm(
+                d_model // 4, eps=layer_norm_eps, bias=bias, **factory_kwargs
+            ),
+            nn.GELU(),
+            Dropout(dropout),
             nn.Linear(d_model // 4, output_dim, bias=bias),
         )
 
@@ -137,7 +146,8 @@ class NET(BaseModuleClass):
         _x = torch.nan_to_num(_main, nan=-255.0)
         _x = self.embedding(_x.unsqueeze(-1)).permute(1, 0, 2) + self.pos_embedding(_x).unsqueeze(1)
         attn_logits = self.encoder(_x, src_key_padding_mask=torch.isnan(_main))
-        attn_logits = attn_logits.mean(dim=0)
+        weights = torch.softmax(self.pool(attn_logits), dim=0)
+        attn_logits = (attn_logits * weights).sum(dim=0)
         out = self.decoder(attn_logits)
         return out
 
