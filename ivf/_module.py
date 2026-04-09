@@ -22,9 +22,9 @@ class PositionEncoding(nn.Module):
         pos = torch.arange(0, max_len).float().unsqueeze(1)
         _2i = torch.arange(0, d_model, 2).float()
 
-        pe[:, 0::2] = torch.sin(pos / (10000**(_2i / d_model)))
-        pe[:, 1::2] = torch.cos(pos / (10000**(_2i / d_model)))
-        
+        pe[:, 0::2] = torch.sin(pos / (10000 ** (_2i / d_model)))
+        pe[:, 1::2] = torch.cos(pos / (10000 ** (_2i / d_model)))
+
         self.register_buffer("PE", pe)
 
     def forward(self, x):
@@ -113,18 +113,18 @@ class NET(BaseModuleClass):
         self.encoder = nn.TransformerEncoder(
             encoder_layer, num_encoder_layers, encoder_norm
         )
-        self.pool = nn.Linear(d_model, 1)
+        self.attention_pool = nn.Sequential(
+            nn.Linear(d_model, d_model // 2, **factory_kwargs),
+            nn.Tanh(),
+            nn.Linear(d_model // 2, 1, **factory_kwargs),
+        )
         self.decoder = nn.Sequential(
             nn.Linear(d_model, d_model // 2, bias=bias),
-            LayerNorm(
-                d_model // 2, eps=layer_norm_eps, bias=bias, **factory_kwargs
-            ),
+            LayerNorm(d_model // 2, eps=layer_norm_eps, bias=bias, **factory_kwargs),
             nn.GELU(),
             Dropout(dropout),
             nn.Linear(d_model // 2, d_model // 4, bias=bias),
-            LayerNorm(
-                d_model // 4, eps=layer_norm_eps, bias=bias, **factory_kwargs
-            ),
+            LayerNorm(d_model // 4, eps=layer_norm_eps, bias=bias, **factory_kwargs),
             nn.GELU(),
             Dropout(dropout),
             nn.Linear(d_model // 4, output_dim, bias=bias),
@@ -144,11 +144,16 @@ class NET(BaseModuleClass):
         if len(_main.shape) == 1:
             _main = _main.unsqueeze(0)
         _x = torch.nan_to_num(_main, nan=-255.0)
-        _x = self.embedding(_x.unsqueeze(-1)).permute(1, 0, 2) + self.pos_embedding(_x).unsqueeze(1)
+        _x = self.embedding(_x.unsqueeze(-1)).permute(1, 0, 2) + self.pos_embedding(
+            _x
+        ).unsqueeze(1)
         attn_logits = self.encoder(_x, src_key_padding_mask=torch.isnan(_main))
-        weights = torch.softmax(self.pool(attn_logits), dim=0)
-        attn_logits = (attn_logits * weights).sum(dim=0)
-        out = self.decoder(attn_logits)
+
+        attention_weights = self.attention_pool(attn_logits)
+        attention_weights = F.softmax(attention_weights, dim=0) # [features, batch_size, 1]
+        pooled = (attn_logits * attention_weights).sum(dim=0) # [batch_size, d_model]
+
+        out = self.decoder(pooled)
         return out
 
     @auto_move_data
@@ -160,8 +165,7 @@ class NET(BaseModuleClass):
         losses = dict()
         target = tensors[self.target_loc].squeeze()
 
-        losses[LOSS_KEYS.FocalLoss] = FocalLoss()(
-            inference_output.squeeze(), target)
+        losses[LOSS_KEYS.FocalLoss] = FocalLoss()(inference_output.squeeze(), target)
 
         return losses
 
@@ -181,30 +185,24 @@ class NET(BaseModuleClass):
         else:
             return inference_output
 
-    # TODO
-    def _init_weights(self, initializer_range=0.02):
-        """Initialize the weights"""
+    def _init_weights(self, initializer_range: float = 0.02):
+        """Initialize weights using proper initialization strategies."""
         for module in self.modules():
             if isinstance(module, (nn.Linear, nn.Embedding)):
-                # Slightly different from the TF version which uses truncated_normal for initialization
-                # cf https://github.com/pytorch/pytorch/pull/5617
-                module.weight.data.normal_(mean=0.0, std=initializer_range)
-            elif isinstance(module, nn.LayerNorm):
-                module.bias.data.zero_()
-                module.weight.data.fill_(1.0)
-            elif isinstance(module, nn.Conv2d):
-                nn.init.kaiming_normal_(
-                    module.weight, mode="fan_out", nonlinearity="relu"
+                # Xavier initialization for better gradient flow
+                nn.init.xavier_uniform_(
+                    module.weight, gain=nn.init.calculate_gain("relu")
                 )
                 if module.bias is not None:
                     nn.init.constant_(module.bias, 0)
-            if isinstance(module, nn.Linear) and module.bias is not None:
-                module.bias.data.zero_()
+            elif isinstance(module, nn.LayerNorm):
+                nn.init.constant_(module.weight, 1.0)
+                nn.init.constant_(module.bias, 0)
 
     def load_state_dict(self, state_dict):
         def _remove_prefix(text, prefix):
             if text.startswith(prefix):
-                return text[len(prefix):]
+                return text[len(prefix) :]
             return text
 
         pairings = [

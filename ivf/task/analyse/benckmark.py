@@ -8,7 +8,7 @@ from tabpfn import TabPFNRegressor
 
 import ivf
 
-adata_path = "../dataset82"
+adata_path = "../dataset/dataset_0"
 test_data = pd.read_excel("../data.2025.xlsx")
 test_dataset = ivf.setup_data(
     test_data.iloc[:, 2:].values,
@@ -56,26 +56,26 @@ tab_predictions = tab_model.predict(X_val)
 tab_test_predictions = tab_model.predict(X_test)
 
 pd.DataFrame({"predictions": lr_predictions, "targets": y_val_clean}).to_csv(
-    "predictions.lr.csv", index=False
+    "benchmark/predictions.{}.lr.csv".format(adata_path.split("_")[-1]), index=False
 )
 pd.DataFrame({"predictions": lr_test_predictions, "targets": y_test_clean}).to_csv(
-    "predictions.lr.2025.csv", index=False
+    "benchmark/predictions.{}.lr.2025.csv".format(adata_path.split("_")[-1]), index=False
 )
 pd.DataFrame({"predictions": hgb_predictions, "targets": y_val_clean}).to_csv(
-    "predictions.hgb.csv", index=False
+    "benchmark/predictions.{}.hgb.csv".format(adata_path.split("_")[-1]), index=False
 )
 pd.DataFrame({"predictions": hgb_test_predictions, "targets": y_test_clean}).to_csv(
-    "predictions.hgb.2025.csv", index=False
+    "benchmark/predictions.{}.hgb.2025.csv".format(adata_path.split("_")[-1]), index=False
 )
 pd.DataFrame({"predictions": rf_predictions, "targets": y_val_clean}).to_csv(
-    "predictions.rf.csv", index=False
+    "benchmark/predictions.{}.rf.csv".format(adata_path.split("_")[-1]), index=False
 )
 pd.DataFrame({"predictions": rf_test_predictions, "targets": y_test_clean}).to_csv(
-    "predictions.rf.2025.csv", index=False
+    "benchmark/predictions.{}.rf.2025.csv".format(adata_path.split("_")[-1]), index=False
 )
 pd.DataFrame({"predictions": tab_predictions, "targets": y_val}).to_csv(
-    "predictions.tab.csv", index=False
+    "benchmark/predictions.{}.tab.csv".format(adata_path.split("_")[-1]), index=False
 )
 pd.DataFrame({"predictions": tab_test_predictions, "targets": y_test}).to_csv(
-    "predictions.tab.2025.csv", index=False
+    "benchmark/predictions.{}.tab.2025.csv".format(adata_path.split("_")[-1]), index=False
 )
