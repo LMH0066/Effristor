@@ -10,6 +10,7 @@ import torch.nn.functional as F
 from lightning.pytorch.loggers import NeptuneLogger
 from scipy import stats
 from sklearn.metrics import auc, precision_recall_curve, roc_auc_score
+from sklearn.model_selection import train_test_split
 from torchmetrics import Metric
 from torchmetrics.utilities import dim_zero_cat
 from tqdm import tqdm
@@ -38,8 +39,15 @@ def create_dataset(input_file, split_key, output_file, random_seed):
     )
 
     index = dataset.obs.index.to_numpy().astype(int)
-    train_index = np.random.choice(index, size=int(len(index) * 0.8), replace=False)
-    validate_index = np.setdiff1d(index, train_index)
+
+    target = dataset.obsm["target"].flatten() if len(dataset.obsm["target"].shape) > 1 else dataset.obsm["target"]
+    train_index, validate_index = train_test_split(
+        index, 
+        test_size=0.2, 
+        random_state=random_seed,
+        stratify=target
+    )
+
     split = pd.Series(["0"] * len(index))
     split[train_index], split[validate_index] = "train", "validate"
     dataset.obs[split_key] = split.values
@@ -94,7 +102,11 @@ class MyMetric(Metric):
 @click.option("--split_key", type=str, required=True)
 def train_multi(dataset_dir_path, split_key):
     dataset_dir = Path(dataset_dir_path)
-    dataset_files = list(dataset_dir.rglob("*"))
+    dataset_files = sorted(
+        [p for p in dataset_dir.rglob("*") if p.is_file()],
+        key=lambda p: int(p.stem.split("_")[-1])
+    )
+
     for dataset_file in dataset_files:
         print(f"Start training with dataset: {dataset_file}")
 
@@ -113,31 +125,32 @@ def train_multi(dataset_dir_path, split_key):
         model = ivf.IVF(
             dataset,
             module_params={
-                "d_model": 64,
-                "num_encoder_layers": 3,
-                "nhead": 8,
-                "dim_feedforward": 512,
-                "dropout": 0.02,
+                "d_model": 128,
+                "num_encoder_layers": 2,
+                "nhead": 16,
+                "dim_feedforward": 128,
+                "dropout": 0.01,
             },
             split_key=split_key,
         )
 
         model.train(
-            max_epochs=160,
+            max_epochs=50,
             save_ckpt_every_n_epoch=1,
             plan_kwargs={
                 "metric": MyMetric(),
                 "lr": 5e-5,
-                "weight_decay": 0.2,
-                "step_scheduler": True,
-                "step_size_lr": 20,
-                "gamma_lr": 0.9,
+                "weight_decay": 0.1,
+                "cosine_scheduler": True,
+                "scheduler_max_epochs": 50,
+                "scheduler_final_lr": 1e-5,
+                "gclip": 1,
             },
-            batch_size=16,
+            batch_size=64,
             save_top_k=1,
             # num_workers=18,
             # precision="16-mixed",
-            device=[1],
+            device=[5],
             # logger=NeptuneLogger(log_model_checkpoints=False),
         )
 

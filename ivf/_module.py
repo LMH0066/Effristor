@@ -34,7 +34,7 @@ class PositionEncoding(nn.Module):
 
 
 class FocalLoss(nn.Module):
-    def __init__(self, gamma=2.0, alpha=0.5, reduction="mean"):
+    def __init__(self, gamma=2.0, alpha=0.4, reduction="mean"):
         super().__init__()
         self.gamma = gamma
         self.alpha = alpha
@@ -121,11 +121,11 @@ class NET(BaseModuleClass):
         self.decoder = nn.Sequential(
             nn.Linear(d_model, d_model // 2, bias=bias),
             LayerNorm(d_model // 2, eps=layer_norm_eps, bias=bias, **factory_kwargs),
-            nn.GELU(),
+            nn.ReLU(),
             Dropout(dropout),
             nn.Linear(d_model // 2, d_model // 4, bias=bias),
             LayerNorm(d_model // 4, eps=layer_norm_eps, bias=bias, **factory_kwargs),
-            nn.GELU(),
+            nn.ReLU(),
             Dropout(dropout),
             nn.Linear(d_model // 4, output_dim, bias=bias),
         )
@@ -143,7 +143,7 @@ class NET(BaseModuleClass):
         _main = main.squeeze()
         if len(_main.shape) == 1:
             _main = _main.unsqueeze(0)
-        _x = torch.nan_to_num(_main, nan=-255.0)
+        _x = torch.nan_to_num(_main, nan=-1.0)
         _x = self.embedding(_x.unsqueeze(-1)).permute(1, 0, 2) + self.pos_embedding(
             _x
         ).unsqueeze(1)

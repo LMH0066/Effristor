@@ -1,4 +1,4 @@
-python run.py create-dataset --input_file data.xlsx --split_key split_key --output_file dataset/dataset_0 --random_seed 42
+python run.py create-dataset --input_file data.xlsx --split_key split_key --output_file dataset/dataset_0 --random_seed 0
 python run.py create-dataset --input_file data.xlsx --split_key split_key --output_file dataset/dataset_1 --random_seed 1
 python run.py create-dataset --input_file data.xlsx --split_key split_key --output_file dataset/dataset_2 --random_seed 2
 python run.py create-dataset --input_file data.xlsx --split_key split_key --output_file dataset/dataset_3 --random_seed 3
