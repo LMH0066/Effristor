@@ -127,7 +127,7 @@ def train_multi(dataset_dir_path, split_key):
             module_params={
                 "d_model": 128,
                 "num_encoder_layers": 2,
-                "nhead": 16,
+                "nhead": 32,
                 "dim_feedforward": 128,
                 "dropout": 0.01,
             },
@@ -135,14 +135,14 @@ def train_multi(dataset_dir_path, split_key):
         )
 
         model.train(
-            max_epochs=50,
+            max_epochs=100,
             save_ckpt_every_n_epoch=1,
             plan_kwargs={
                 "metric": MyMetric(),
                 "lr": 5e-5,
                 "weight_decay": 0.1,
                 "cosine_scheduler": True,
-                "scheduler_max_epochs": 50,
+                "scheduler_max_epochs": 100,
                 "scheduler_final_lr": 1e-5,
                 "gclip": 1,
             },
