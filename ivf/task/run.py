@@ -135,18 +135,19 @@ def train_multi(dataset_dir_path, split_key):
         )
 
         model.train(
-            max_epochs=100,
+            max_epochs=150,
             save_ckpt_every_n_epoch=1,
             plan_kwargs={
                 "metric": MyMetric(),
                 "lr": 5e-5,
                 "weight_decay": 0.1,
-                "cosine_scheduler": True,
-                "scheduler_max_epochs": 100,
-                "scheduler_final_lr": 1e-5,
-                "gclip": 1,
+                "n_epochs_warmup": 0,
+                "one_cycle_scheduler": True,
+                "one_cycle_total_steps": 26000,
+                "one_cycle_pct_start": 0.3,
+                "gclip": 0,
             },
-            batch_size=64,
+            batch_size=32,
             save_top_k=1,
             # num_workers=18,
             # precision="16-mixed",

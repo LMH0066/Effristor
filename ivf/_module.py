@@ -188,11 +188,10 @@ class NET(BaseModuleClass):
     def _init_weights(self, initializer_range: float = 0.02):
         """Initialize weights using proper initialization strategies."""
         for module in self.modules():
-            if isinstance(module, (nn.Linear, nn.Embedding)):
-                # Xavier initialization for better gradient flow
-                nn.init.xavier_uniform_(
-                    module.weight, gain=nn.init.calculate_gain("relu")
-                )
+            # if isinstance(module, nn.Embedding):
+            #     nn.init.normal_(module.weight, mean=0.0, std=initializer_range)
+            if isinstance(module, nn.Linear):
+                nn.init.xavier_uniform_(module.weight)
                 if module.bias is not None:
                     nn.init.constant_(module.bias, 0)
             elif isinstance(module, nn.LayerNorm):

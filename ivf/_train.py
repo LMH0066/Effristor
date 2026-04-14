@@ -3,7 +3,7 @@ from typing import Dict, List, Union
 import numpy as np
 import torch
 from scvi.train import TrainingPlan
-from torch.optim.lr_scheduler import CosineAnnealingLR, OneCycleLR, StepLR
+from torch.optim.lr_scheduler import CosineAnnealingLR, LambdaLR, OneCycleLR, SequentialLR, StepLR
 
 from ivf._utils import LOSS_KEYS, DefaultMetric
 
@@ -26,7 +26,6 @@ class IVFTrainingPlan(TrainingPlan):
         scheduler_max_epochs: int = 1000,
         scheduler_final_lr: float = 1e-5,
         one_cycle_scheduler: bool = False,
-        one_cycle_max_lr: float = 1e-3,
         one_cycle_total_steps: int = 1000,
         one_cycle_pct_start: float = 0.1,
         gclip: float = 0,
@@ -62,9 +61,10 @@ class IVFTrainingPlan(TrainingPlan):
         elif one_cycle_scheduler:
             self.scheduler = OneCycleLR
             self.scheduler_params = {
-                "max_lr": one_cycle_max_lr,
+                "max_lr": lr,
                 "total_steps": one_cycle_total_steps,
                 "pct_start": one_cycle_pct_start,
+                "anneal_strategy": "linear",
             }
 
         self.step_size_lr = step_size_lr
@@ -110,12 +110,23 @@ class IVFTrainingPlan(TrainingPlan):
             )
         )
 
+        def warmup_lambda(epoch):
+            if epoch < self.n_epochs_warmup:
+                return (epoch + 1) / self.n_epochs_warmup
+            return 1.0
+        warmup_scheduler = LambdaLR(optimizers[0], lr_lambda=warmup_lambda)
+
         if self.scheduler is not None:
-            for optimizer in optimizers:
-                schedulers.append(self.scheduler(optimizer, **self.scheduler_params))
-            return optimizers, schedulers
+            main_scheduler = self.scheduler(optimizers[0], **self.scheduler_params)
+            schedulers = SequentialLR(
+                optimizers[0],
+                schedulers=[warmup_scheduler, main_scheduler],
+                milestones=[self.n_epochs_warmup]
+            )
         else:
-            return optimizers
+            schedulers = [warmup_scheduler]
+
+        return optimizers, schedulers
 
     @property
     def epoch_keys(self):
@@ -155,6 +166,13 @@ class IVFTrainingPlan(TrainingPlan):
             torch.nn.utils.clip_grad_value_(self.module.parameters(), self.gclip)
         for optimizer in optimizers:
             optimizer.step()
+        
+        schedulers = self.lr_schedulers()
+        if not isinstance(schedulers, list):
+            schedulers = [schedulers]
+        for scheduler in schedulers:
+            if scheduler is not None:
+                scheduler.step()
 
         results = {}
         for key in self.use_losses:
@@ -184,18 +202,11 @@ class IVFTrainingPlan(TrainingPlan):
                 sync_dist=self.sync_dist,
             )
 
-        schedulers = self.lr_schedulers()
-        if not isinstance(schedulers, list):
-            schedulers = [schedulers]
-        for scheduler in schedulers:
-            if scheduler is not None:
-                scheduler.step()
-
         self.training_step_outputs.clear()
 
     def validation_step(self, batch, batch_idx):
         """Validation step."""
-        outputs, losses = self(batch)
+        outputs, losses = self.module(batch)
         results = {
             "predicts": outputs.detach().cpu(),
             "targets": batch["target"].detach().cpu(),
