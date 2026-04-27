@@ -130,79 +130,80 @@ def suggest_4(model_path: str, xlsx_path: str, output_path: str = "suggest_4.csv
 
 @click.command()
 @click.option("--model_path", type=str)
+@click.option("--dataset_path", type=str)
 @click.option("--xlsx_path", type=str)
 @click.option("--feature_count", type=int)
 @click.option("--output_path", type=str, default="suggest.csv")
-def suggest(model_path: str, xlsx_path: str, feature_count: int, output_path: str = "suggest.csv"):
+def suggest(model_path: str, dataset_path: str, xlsx_path: str, feature_count: int, output_path: str = "suggest.csv"):
     # Load the trained model
-    adata = anndata.read_h5ad(os.path.join(model_path, "dataset82"))
+    adata = anndata.read_h5ad(dataset_path)
     model = IVF.load(model_path, adata)
 
     # Loading data to be analyzed
     raw_data = pd.read_excel(xlsx_path)
     df = raw_data[raw_data["Normal fertilization"] == 0].drop(columns=["ID", "Normal fertilization"])  # Chose abnormal case
     column_names = {
+        42: "Number of oocyte for IVF",
         19: "E2 at hCG day",
         17: "Gonadotropin (Gn) dosage",
-        27: "Abstinence days",
-        38: "Concentration after semen optimization treatment",
-        7:  "BMI",
-        18: "Gn stimulation days",
-        23: "The number of follicles ≥14mm at hCG day",
-        22: "Endometrial thickness at hCG day",
-        24: "Number of punctured follicles",
-        11: "Estradiol (E2)",
-        42: "Number of oocyte for IVF",
         43: "Number of oocyte for ICSI",
+        38: "Concentration after semen optimization treatment",
+        22: "Endometrial thickness at hCG day",
         26: "Type of semen",
+        27: "Abstinence days",
+        24: "Number of punctured follicles",
+        23: "The number of follicles ≥14mm at hCG day",
+        18: "Gn stimulation days",
+        11: "Estradiol (E2)",
+        7:  "BMI",
         37: "Volume after semen optimization treatment",
     }
     learning_rates = {
-        19: 2e4,   # E2 at hCG day
-        17: 5e3,   # Gonadotropin (Gn) dosage
-        27: 5,     # Abstinence days
-        38: 10,    # Concentration after semen optimization treatment
-        7:  10,    # BMI
-        18: 15,    # Gn stimulation days
-        23: 25,    # The number of follicles ≥14mm at hCG day
-        22: 5,     # Endometrial thickness at hCG day
-        24: 1,     # Number of punctured follicles
-        11: 20,    # Estradiol (E2)
         42: 5,     # Number of oocyte for IVF
-        43: 10,    # Number of oocyte for ICSI
-        26: 1e-1,  # Type of semen
-        37: 15,     # Volume after semen optimization treatment
+        19: 5e4,   # E2 at hCG day
+        17: 5e5,   # Gonadotropin (Gn) dosage
+        43: 20,    # Number of oocyte for ICSI
+        38: 15,    # Concentration after semen optimization treatment
+        22: 5,     # Endometrial thickness at hCG day
+        26: 1e-2,  # Type of semen
+        27: 40,    # Abstinence days
+        24: 10,    # Number of punctured follicles
+        23: 25,    # The number of follicles ≥14mm at hCG day
+        18: 15,    # Gn stimulation days
+        11: 30,    # Estradiol (E2)
+        7:  50,    # BMI
+        37: 15,    # Volume after semen optimization treatment
     }
     clamp_range = {
+        42: (0, 54),
         19: (19, 18176),
         17: (75, 11650),
-        27: (0, 18),
-        38: (1, 5),
-        7:  (15, 40),
-        18: (1, 30),
-        23: (0, 51),
-        22: (2, 86),
-        24: (1, 54),
-        11: (3.36, 4768),
-        42: (0, 54),
         43: (0, 39),
+        38: (1, 5),
+        22: (2, 86),
         26: (1, 2),
+        27: (0, 18),
+        24: (1, 54),
+        23: (0, 51),
+        18: (1, 30),
+        11: (3.36, 4768),
+        7:  (15, 40),
         37: (0.2, 3),
     }
     need_round = {
+        42: True,
         19: False,
         17: True,
-        27: True,
-        38: True,
-        7:  False,
-        18: True,
-        23: True,
-        22: False,
-        24: True,
-        11: False,
-        42: True,
         43: True,
+        38: True,
+        22: False,
         26: True,
+        27: True,
+        24: True,
+        23: True,
+        18: True,
+        11: False,
+        7:  False,
         37: False,
     }
     
